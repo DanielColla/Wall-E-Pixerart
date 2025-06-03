@@ -1,0 +1,12 @@
+Spawn(100, 100)
+Color("Green")
+Size(1)
+
+
+DrawRectangle(0, 0, 0, 40, 40)
+
+
+Color("Purple")
+DrawLine(1, 0, 40)
+DrawLine(-1, 1, 40)
+DrawLine(0, -1, 40)

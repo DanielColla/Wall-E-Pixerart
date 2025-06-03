@@ -1,0 +1,111 @@
+[gd_scene load_steps=3 format=3 uid="uid://0rc1ixnf81la"]
+
+[ext_resource type="Script" uid="uid://c8wtvfo8gtvyn" path="res://MainUI.cs" id="1_uu6xs"]
+[ext_resource type="Script" uid="uid://cnmvg7cmdljog" path="res://CanvasRenderer.cs" id="2_r0du0"]
+
+[node name="Node2D" type="Node2D"]
+
+[node name="PanelPrincipal" type="Control" parent="." node_paths=PackedStringArray("CodeEditor", "Canvas", "CanvasSizeInput", "RunButton", "SaveButton", "LoadButton", "ClearButton", "ResizeButton", "FileDialog", "StatusLabel", "GridToggle", "LineNumbers")]
+layout_mode = 3
+anchors_preset = 0
+offset_left = 3.0
+offset_right = 1280.0
+offset_bottom = 720.0
+script = ExtResource("1_uu6xs")
+CodeEditor = NodePath("CuadroTextoEditor")
+Canvas = NodePath("Lienzo")
+CanvasSizeInput = NodePath("ContenedorSuperior/ContenedorRedimension/EntradaTamaño")
+RunButton = NodePath("ContenedorSuperior/BotonEjecutar")
+SaveButton = NodePath("ContenedorSuperior/BotonGuardar")
+LoadButton = NodePath("ContenedorSuperior/BotonCargar")
+ClearButton = NodePath("ContenedorSuperior/BotonLimpiar")
+ResizeButton = NodePath("ContenedorSuperior/ContenedorRedimension/BotonRedimension")
+FileDialog = NodePath("DialogoArchivo")
+StatusLabel = NodePath("EtiquetaEstado")
+GridToggle = NodePath("CasillaVerificacion")
+LineNumbers = NodePath("NumerosLinea")
+
+[node name="CuadroTextoEditor" type="TextEdit" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 40.0
+offset_right = 640.0
+offset_bottom = 640.0
+
+[node name="NumerosLinea" type="TextEdit" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 40.0
+offset_right = 40.0
+offset_bottom = 640.0
+theme_override_colors/background_color = Color(0.661954, 0.182682, 0.279083, 1)
+editable = false
+
+[node name="ContenedorSuperior" type="HBoxContainer" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 40.0
+offset_right = 1250.0
+offset_bottom = 80.0
+theme_override_constants/separation = 10
+
+[node name="BotonEjecutar" type="Button" parent="PanelPrincipal/ContenedorSuperior"]
+layout_mode = 2
+text = "Ejecutar"
+
+[node name="BotonGuardar" type="Button" parent="PanelPrincipal/ContenedorSuperior"]
+layout_mode = 2
+text = "Guardar
+"
+
+[node name="BotonCargar" type="Button" parent="PanelPrincipal/ContenedorSuperior"]
+layout_mode = 2
+text = "Cargar
+"
+
+[node name="BotonLimpiar" type="Button" parent="PanelPrincipal/ContenedorSuperior"]
+layout_mode = 2
+text = "Limpiar"
+
+[node name="ContenedorRedimension" type="HBoxContainer" parent="PanelPrincipal/ContenedorSuperior"]
+layout_mode = 2
+
+[node name="EntradaTamaño" type="LineEdit" parent="PanelPrincipal/ContenedorSuperior/ContenedorRedimension"]
+layout_mode = 2
+
+[node name="BotonRedimension" type="Button" parent="PanelPrincipal/ContenedorSuperior/ContenedorRedimension"]
+layout_mode = 2
+
+[node name="Lienzo" type="TextureRect" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 100.0
+offset_right = 1162.0
+offset_bottom = 612.0
+script = ExtResource("2_r0du0")
+
+[node name="CasillaVerificacion" type="CheckBox" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 650.0
+offset_top = 620.0
+offset_right = 825.0
+offset_bottom = 651.0
+text = "Mostrar cuadricula"
+
+[node name="EtiquetaEstado" type="Label" parent="PanelPrincipal"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 660.0
+offset_right = 1240.0
+offset_bottom = 700.0
+text = "[Estado]Listo"
+
+[node name="DialogoArchivo" type="FileDialog" parent="PanelPrincipal"]
+
+[connection signal="text_changed" from="PanelPrincipal/CuadroTextoEditor" to="PanelPrincipal" method="UpdateLineNumbers"]
+[connection signal="text_changed" from="PanelPrincipal/NumerosLinea" to="PanelPrincipal" method="UpdateLineNumbers"]
+[connection signal="pressed" from="PanelPrincipal/ContenedorSuperior/BotonEjecutar" to="PanelPrincipal" method="OnRunPressed"]
+[connection signal="pressed" from="PanelPrincipal/ContenedorSuperior/BotonGuardar" to="PanelPrincipal" method="OnSavePressed"]
+[connection signal="pressed" from="PanelPrincipal/ContenedorSuperior/BotonCargar" to="PanelPrincipal" method="OnLoadPressed"]
+[connection signal="pressed" from="PanelPrincipal/ContenedorSuperior/BotonLimpiar" to="PanelPrincipal" method="OnClearPressed"]
+[connection signal="file_selected" from="PanelPrincipal/DialogoArchivo" to="PanelPrincipal" method="OnFileSelected"]
