@@ -1,7 +1,7 @@
-using Godot;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using Godot;
 
 public class Lexer
 {
@@ -10,23 +10,34 @@ public class Lexer
     private int current = 0;
     private int line = 1;
 
-    private static readonly Dictionary<string, TokenType> keywords = new()
+    // Diccionario seguro sin comparador
+    private static readonly Dictionary<string, TokenType> keywords = 
+        new Dictionary<string, TokenType>()
     {
-        {"Spawn", TokenType.Spawn}, {"Color", TokenType.Color},
-        {"Size", TokenType.Size}, {"DrawLine", TokenType.DrawLine},
-        {"DrawCircle", TokenType.DrawCircle}, {"DrawRectangle", TokenType.DrawRectangle},
-        {"Fill", TokenType.Fill}, {"GoTo", TokenType.GoTo},
-        {"GetActualX", TokenType.GetActualX}, {"GetActualY", TokenType.GetActualY},
-        {"GetCanvasSize", TokenType.GetCanvasSize}, {"GetColorCount", TokenType.GetColorCount},
-        {"IsBrushColor", TokenType.IsBrushColor}, {"IsBrushSize", TokenType.IsBrushSize},
-        {"IsCanvasColor", TokenType.IsCanvasColor}, {"and", TokenType.And}, {"or", TokenType.Or}
+        {"spawn", TokenType.Spawn}, 
+        {"color", TokenType.Color},
+        {"size", TokenType.Size}, 
+        {"drawline", TokenType.DrawLine},
+        {"drawcircle", TokenType.DrawCircle}, 
+        {"drawrectangle", TokenType.DrawRectangle},
+        {"fill", TokenType.Fill}, 
+        {"goto", TokenType.GoTo},
+        {"getactualx", TokenType.GetActualX}, 
+        {"getactualy", TokenType.GetActualY},
+        {"getcanvassize", TokenType.GetCanvasSize}, 
+        {"getcolorcount", TokenType.GetColorCount},
+        {"isbrushcolor", TokenType.IsBrushColor}, 
+        {"isbrushsize", TokenType.IsBrushSize},
+        {"iscanvascolor", TokenType.IsCanvasColor}, 
+        {"and", TokenType.And}, 
+        {"or", TokenType.Or}
     };
 
     public Lexer(string source) => this.source = source;
 
     public List<Token> Tokenize()
     {
-        List<Token> tokens = new();
+        List<Token> tokens = new List<Token>();
         while (!IsAtEnd())
         {
             start = current;
@@ -125,14 +136,18 @@ public class Lexer
         AddToken(tokens, TokenType.Number, value);
     }
 
-    private void Identifier(List<Token> tokens)
+ private void Identifier(List<Token> tokens)
     {
-        while (char.IsLetterOrDigit(Peek()) || Peek() == '-') Advance();
+        while (char.IsLetterOrDigit(Peek()) || Peek() == '-' || Peek() == '_' || Peek() == '.') 
+            Advance();
         
         string text = source.Substring(start, current - start);
         ValidateIdentifier(text);
 
-        if (keywords.TryGetValue(text, out TokenType type))
+        // Conversión a minúsculas para comparación insensible
+        string key = text.ToLowerInvariant();
+        
+        if (keywords.TryGetValue(key, out TokenType type))
             AddToken(tokens, type, null);
         else
             AddToken(tokens, TokenType.Identifier, text);
@@ -140,13 +155,11 @@ public class Lexer
 
     private void ValidateIdentifier(string text)
     {
-        if (char.IsDigit(text[0]) || text.StartsWith("-"))
+        if (char.IsDigit(text[0]))
+        {
             throw new WallEException($"Identificador inválido: '{text}'", 
                 WallEException.ErrorType.Sintaxis, line);
-        
-        if (!Regex.IsMatch(text, @"^[a-zA-Zá-úÁ-ÚñÑ0-9\-]+$"))
-            throw new WallEException($"Caracteres inválidos en identificador: '{text}'", 
-                WallEException.ErrorType.Sintaxis, line);
+        }
     }
 
     private char Advance() => source[current++];

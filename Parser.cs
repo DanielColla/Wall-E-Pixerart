@@ -1,7 +1,7 @@
-using Godot;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Godot;
 
 public class Parser
 {
@@ -14,7 +14,6 @@ public class Parser
     {
         ProgramNode program = new();
         
-        // Ignorar saltos de línea iniciales
         while (Match(TokenType.NewLine)) { }
         
         while (!IsAtEnd())
@@ -44,6 +43,7 @@ public class Parser
 
     private ASTNode ParseStatement()
     {
+        
         if (Check(TokenType.GoTo)) return ParseGoTo();
         if (IsCommand(Peek().Type)) return ParseCommand();
         if (Check(TokenType.Identifier) && PeekNext()?.Type == TokenType.Assign) 
@@ -61,18 +61,16 @@ public class Parser
         {
             TokenType.Spawn or TokenType.Color or TokenType.Size or 
             TokenType.DrawLine or TokenType.DrawCircle or 
-            TokenType.DrawRectangle or TokenType.Fill => true,
+            TokenType.DrawRectangle or TokenType.Fill or TokenType.GoTo => true,
             _ => false
         };
     }
 
     private bool IsLabelLine()
     {
-        int current = this.current;
-        bool isLabel = Check(TokenType.Identifier) && 
-                      (PeekNext()?.Type == TokenType.NewLine || 
-                       PeekNext()?.Type == TokenType.EOF);
-        return isLabel;
+        int temp = current;
+        while (temp < tokens.Count && tokens[temp].Type == TokenType.Identifier) temp++;
+        return temp < tokens.Count && tokens[temp].Type == TokenType.NewLine;
     }
 
     private CommandNode ParseCommand()
@@ -97,7 +95,7 @@ public class Parser
                 type: WallEException.ErrorType.Sintaxis,
                 line: ex.Line,
                 context: $"Comando: {commandName} | {ex.Context}",
-                inner: ex  // Corrección: usar 'inner' en lugar de 'innerException'
+                inner: ex
             );
         }
     }
@@ -119,7 +117,7 @@ public class Parser
                     type: WallEException.ErrorType.Sintaxis,
                     line: ex.Line,
                     context: $"Argumento {args.Count + 1}: {ex.Context}",
-                    inner: ex  // Corrección: usar 'inner' en lugar de 'innerException'
+                    inner: ex
                 );
             }
         }
@@ -151,7 +149,7 @@ public class Parser
         return new LabelNode(label.Lexeme) { LineNumber = label.Line };
     }
 
-    private GoToNode ParseGoTo()
+private GoToNode ParseGoTo()
     {
         Token gotoToken = Advance();
         try
@@ -167,14 +165,15 @@ public class Parser
         catch (WallEException ex)
         {
             throw new WallEException(
-                message: ex.Message,
+                message: $"Error en GoTo: {ex.Message}",
                 type: WallEException.ErrorType.Sintaxis,
                 line: ex.Line,
-                context: $"GoTo en línea {gotoToken.Line} | {ex.Context}",
-                inner: ex  // Corrección: usar 'inner' en lugar de 'innerException'
+                context: $"Estructura: GoTo [etiqueta] (condición)",
+                inner: ex
             );
         }
     }
+
 
     private ExpressionNode ParseExpression() => ParseLogicalOr();
 
@@ -325,7 +324,7 @@ public class Parser
                 type: WallEException.ErrorType.Semantico,
                 line: ex.Line,
                 context: $"Función: {functionName} | {ex.Context}",
-                inner: ex  // Corrección: usar 'inner' en lugar de 'innerException'
+                inner: ex
             );
         }
     }

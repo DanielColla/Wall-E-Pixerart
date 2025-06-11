@@ -24,7 +24,6 @@ public partial class MainUI : Control
     private Stack<string> history = new();
     private bool isUndoing = false;
 
-    // Constantes para el tamaño del canvas
     private const int MinCanvasSize = 16;
     private const int MaxCanvasSize = 1024;
 
@@ -83,11 +82,23 @@ public partial class MainUI : Control
 
     private void SetupDefaultTemplate()
     {
-        CodeEditor.Text = @"Spawn(128, 128)
-Color(""Red"")
-Size(3)
-DrawLine(1, 0, 50)";
-        SaveState(); // Guardar estado inicial
+        CodeEditor.Text = @"Spawn(0, 0)
+Color(""Black"")
+n <- 5
+k <- 3 + 3 * 10
+n <- k * 2
+actual_x <- GetActualX()
+i <- 0
+loop1
+DrawLine(1, 0, 1)
+i <- i + 1
+is_brush_color_blue <- IsBrushColor(""Blue"")
+GoTo [loop_ends_here] (is_brush_color_blue == 1)
+GoTo [loop1] (i < 10)
+Color(""Blue"")
+GoTo [loop1] (1 == 1)
+loop_ends_here";
+        SaveState();
     }
 
     private void OnRunPressed()
@@ -147,24 +158,34 @@ DrawLine(1, 0, 50)";
         
         CodeEditor.SetCaretLine(lineNumber - 1);
         CodeEditor.Call("scroll_to_line", lineNumber - 1);
-        
-        // Resaltado para Godot 4.1.1
         CodeEditor.SetLineBackgroundColor(lineNumber - 1, new Color(1f, 0.2f, 0.2f, 0.4f));
     }
 
-    private void HandleWallEError(WallEException e)
+   private void HandleWallEError(WallEException e)
+{
+    string errorType = e.Type switch
     {
-        string errorType = e.Type switch
-        {
-            WallEException.ErrorType.Sintaxis => "Sintáctico",
-            WallEException.ErrorType.Semantico => "Semántico",
-            _ => "Ejecución"
-        };
-        UpdateStatus($"ERROR ({errorType}, Línea {e.Line}): {e.Message}", true);
-        HighlightErrorLine(e.Line);
-        GD.PrintErr($"{e.Message}\nStack Trace: {e.StackTrace}");
+        WallEException.ErrorType.Sintaxis => "Sintáctico",
+        WallEException.ErrorType.Semantico => "Semántico",
+        _ => "Ejecución"
+    };
+    
+    string detailedMessage = e.Message;
+    
+    if (e.InnerException != null)
+    {
+        detailedMessage += $"\nDetalles: {e.InnerException.Message}";
     }
-
+    
+    if (!string.IsNullOrEmpty(e.Context))
+    {
+        detailedMessage += $"\nContexto: {e.Context}";
+    }
+    
+    UpdateStatus($"ERROR ({errorType}, Línea {e.Line}): {detailedMessage}", true);
+    HighlightErrorLine(e.Line);
+    GD.PrintErr($"{detailedMessage}\nStack Trace: {e.StackTrace}");
+}
     private void OnCodeEditorInput(InputEvent @event)
     {
         if (@event is InputEventKey keyEvent && keyEvent.Pressed)
@@ -218,8 +239,6 @@ DrawLine(1, 0, 50)";
             var lines = CodeEditor.Text.Split('\n');
             LineNumbers.Text = string.Join("\n", Enumerable.Range(1, lines.Length).Select(n => $"{n}."));
             LineNumbers.ScrollVertical = CodeEditor.ScrollVertical;
-            
-            // Sincronizar desplazamiento horizontal
             LineNumbers.ScrollHorizontal = CodeEditor.ScrollHorizontal;
         }
         catch (Exception e)

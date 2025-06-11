@@ -1,6 +1,5 @@
 public enum TokenType
 {
-    // Lista completa de tipos de token
     Spawn, Color, Size, DrawLine, DrawCircle, DrawRectangle, Fill, GoTo,
     GetActualX, GetActualY, GetCanvasSize, GetColorCount, IsBrushColor, 
     IsBrushSize, IsCanvasColor, Identifier, Number, String, Assign, 
@@ -8,7 +7,6 @@ public enum TokenType
     Plus, Minus, Multiply, Divide, Power, Modulo, And, Or, 
     Equal, GreaterEqual, LessEqual, Greater, Less
 }
-
 public class Token
 {
     public TokenType Type { get; }

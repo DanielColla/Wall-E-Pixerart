@@ -7,17 +7,19 @@ public partial class CanvasRenderer : TextureRect
     private Image image;
     private ImageTexture texture;
     private bool showGrid = true;
+    private Color gridColor = new Color(0.8f, 0.8f, 0.8f, 0.3f);
+    private int size;
 
-    public void Initialize(int size)
+    public void Initialize(int canvasSize)
     {
-        // Corregido: Usar Image.CreateEmpty en lugar de Image.Create (obsoleto)
-        image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+        size = canvasSize;
+        image = Image.Create(size, size, false, Image.Format.Rgba8);
         image.Fill(Colors.White);
         texture = ImageTexture.CreateFromImage(image);
         Texture = texture;
     }
 
-    public new int GetSize() => image.GetWidth();
+    public int GetSize() => size;
 
     public void ClearCanvas()
     {
@@ -41,26 +43,22 @@ public partial class CanvasRenderer : TextureRect
     {
         int halfWidth = width / 2;
         int halfHeight = height / 2;
-        Vector2I topLeft = new Vector2I(center.X - halfWidth, center.Y - halfHeight);
-        Vector2I bottomRight = new Vector2I(center.X + halfWidth, center.Y + halfHeight);
-
-        // Dibujar bordes horizontales
-        for (int x = topLeft.X; x <= bottomRight.X; x++)
+        
+        for (int x = center.X - halfWidth; x <= center.X + halfWidth; x++)
         {
             for (int w = 0; w < strokeWidth; w++)
             {
-                SetPixelSafe(x, topLeft.Y - w, color);
-                SetPixelSafe(x, bottomRight.Y + w, color);
+                SetPixelSafe(x, center.Y - halfHeight - w, color);
+                SetPixelSafe(x, center.Y + halfHeight + w, color);
             }
         }
-
-        // Dibujar bordes verticales
-        for (int y = topLeft.Y; y <= bottomRight.Y; y++)
+        
+        for (int y = center.Y - halfHeight; y <= center.Y + halfHeight; y++)
         {
             for (int w = 0; w < strokeWidth; w++)
             {
-                SetPixelSafe(topLeft.X - w, y, color);
-                SetPixelSafe(bottomRight.X + w, y, color);
+                SetPixelSafe(center.X - halfWidth - w, y, color);
+                SetPixelSafe(center.X + halfWidth + w, y, color);
             }
         }
         UpdateTexture();
@@ -73,7 +71,7 @@ public partial class CanvasRenderer : TextureRect
         UpdateTexture();
     }
 
-    public bool IsPositionValid(int x, int y) => x >= 0 && y >= 0 && x < image.GetWidth() && y < image.GetHeight();
+    public bool IsPositionValid(int x, int y) => x >= 0 && y >= 0 && x < size && y < size;
 
     public int GetColorCount(Color color, int x1, int y1, int x2, int y2)
     {
@@ -105,19 +103,28 @@ public partial class CanvasRenderer : TextureRect
     {
         base._Draw();
         
-        if (showGrid)
+        if (showGrid && size > 0)
         {
-            int size = GetSize();
-            Color gridColor = new Color(0.8f, 0.8f, 0.8f, 0.3f);
+            Vector2 cellSize = Size / size;
             
-            for (int i = 0; i < size; i++)
+            for (int i = 0; i <= size; i++)
             {
-                DrawLine(new Vector2(i, 0), new Vector2(i, size), gridColor);
-                DrawLine(new Vector2(0, i), new Vector2(size, i), gridColor);
+                // Líneas verticales
+                DrawLine(
+                    new Vector2(i * cellSize.X, 0),
+                    new Vector2(i * cellSize.X, Size.Y),
+                    gridColor
+                );
+                
+                // Líneas horizontales
+                DrawLine(
+                    new Vector2(0, i * cellSize.Y),
+                    new Vector2(Size.X, i * cellSize.Y),
+                    gridColor
+                );
             }
         }
     }
-
     private void BresenhamLine(Vector2I start, Vector2I end, int width, Color color)
     {
         int dx = Math.Abs(end.X - start.X);

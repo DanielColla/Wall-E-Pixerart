@@ -101,6 +101,9 @@ public class Interpreter
             case "Fill":
                 HandleFill();
                 break;
+            case "GoTo":
+                // Handled separately
+                break;
             default:
                 throw new WallEException($"Comando desconocido: {cmd.Command}", 
                     WallEException.ErrorType.Sintaxis, cmd.LineNumber);
