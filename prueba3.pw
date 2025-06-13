@@ -1,0 +1,16 @@
+Spawn(50, 50)      
+Color("Orange")
+
+GoTo [bloque1] (1)  
+
+bloque1
+DrawLine(1, 0, 60)   
+GoTo [bloque3] (1)   
+
+bloque2
+
+DrawCircle(0, 1, 40)
+
+bloque3
+Color("Yellow")
+DrawRectangle(1, 0, 40, 40, 5)  

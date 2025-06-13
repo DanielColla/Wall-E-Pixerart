@@ -1,0 +1,11 @@
+Spawn(50, 50)       
+Color("Red")
+DrawLine(1, 0, 50)  
+
+GoTo [salto] (1)    
+
+DrawLine(0, 1, 50)   
+
+salto
+Color("Blue")
+DrawCircle(0, 1, 30) 

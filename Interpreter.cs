@@ -13,21 +13,19 @@ public class Interpreter
     private int brushSize = 1;
     private bool spawned = false;
     private int programCounter = 0;
-    
+
     private static readonly Dictionary<string, Color> colorMap = new()
     {
-        {"Red", Colors.Red}, {"Blue", Colors.Blue},
-        {"Green", Colors.Green}, {"Yellow", Colors.Yellow},
-        {"Orange", Colors.Orange}, {"Purple", Colors.Purple},
-        {"Black", Colors.Black}, {"White", Colors.White},
-        {"Transparent", Colors.Transparent}
+        {"Red", Colors.Red}, {"Blue", Colors.Blue}, {"Green", Colors.Green},
+        {"Yellow", Colors.Yellow}, {"Orange", Colors.Orange}, {"Purple", Colors.Purple},
+        {"Black", Colors.Black}, {"White", Colors.White}, {"Transparent", Colors.Transparent}
     };
 
     public void Execute(ProgramNode program)
     {
         ResetState();
         PreprocessLabels(program);
-        
+
         while (programCounter < program.Statements.Count)
         {
             try
@@ -66,12 +64,13 @@ public class Interpreter
                 ExecuteAssignment(assignment);
                 break;
             case GoToNode gotoNode:
-                programCounter = HandleGoTo(gotoNode, programCounter);
-                break;
+                if (!HandleGoTo(gotoNode))
+                    programCounter++;
+                return; // evita incremento doble
             case LabelNode:
                 break;
             default:
-                throw new WallEException("Tipo de instrucción no reconocido", 
+                throw new WallEException("Tipo de instrucción no reconocido",
                     WallEException.ErrorType.Semantico, stmt.LineNumber);
         }
     }
@@ -80,46 +79,32 @@ public class Interpreter
     {
         switch (cmd.Command)
         {
-            case "Spawn":
-                HandleSpawn(cmd.Arguments);
-                break;
-            case "Color":
-                HandleColor(cmd.Arguments);
-                break;
-            case "Size":
-                HandleSize(cmd.Arguments);
-                break;
-            case "DrawLine":
-                HandleDrawLine(cmd.Arguments);
-                break;
-            case "DrawCircle":
-                HandleDrawCircle(cmd.Arguments);
-                break;
-            case "DrawRectangle":
-                HandleDrawRectangle(cmd.Arguments);
-                break;
-            case "Fill":
-                HandleFill();
-                break;
-            case "GoTo":
-                // Handled separately
-                break;
+            case "Spawn": HandleSpawn(cmd.Arguments); break;
+            case "Color": HandleColor(cmd.Arguments); break;
+            case "Size": HandleSize(cmd.Arguments); break;
+            case "DrawLine": HandleDrawLine(cmd.Arguments); break;
+            case "DrawCircle": HandleDrawCircle(cmd.Arguments); break;
+            case "DrawRectangle": HandleDrawRectangle(cmd.Arguments); break;
+            case "Fill": HandleFill(); break;
+            case "GoTo": break; // ya manejado
             default:
-                throw new WallEException($"Comando desconocido: {cmd.Command}", 
+                throw new WallEException($"Comando desconocido: {cmd.Command}",
                     WallEException.ErrorType.Sintaxis, cmd.LineNumber);
         }
     }
 
     private void HandleSpawn(List<ExpressionNode> args)
     {
-        if (spawned) throw new WallEException("Spawn solo puede llamarse una vez", 
-            WallEException.ErrorType.Semantico, args[0].LineNumber);
-        if (args.Count != 2) throw new WallEException("Spawn requiere 2 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+        if (spawned)
+            throw new WallEException("Spawn solo puede llamarse una vez",
+                WallEException.ErrorType.Semantico, args[0].LineNumber);
+        if (args.Count != 2)
+            throw new WallEException("Spawn requiere 2 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
 
         int x = Convert.ToInt32(Evaluate(args[0]));
         int y = Convert.ToInt32(Evaluate(args[1]));
-        
+
         ValidatePosition(x, y);
         position = new Vector2I(x, y);
         spawned = true;
@@ -127,30 +112,33 @@ public class Interpreter
 
     private void HandleColor(List<ExpressionNode> args)
     {
-        if (args.Count != 1) throw new WallEException("Color requiere 1 argumento", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+        if (args.Count != 1)
+            throw new WallEException("Color requiere 1 argumento",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
         currentColor = ParseColor(Evaluate(args[0]).ToString());
     }
 
     private void HandleSize(List<ExpressionNode> args)
     {
-        if (args.Count != 1) throw new WallEException("Size requiere 1 argumento", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+        if (args.Count != 1)
+            throw new WallEException("Size requiere 1 argumento",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
         brushSize = AdjustBrushSize(Convert.ToInt32(Evaluate(args[0])));
     }
 
     private void HandleDrawLine(List<ExpressionNode> args)
     {
-        if (args.Count != 3) throw new WallEException("DrawLine requiere 3 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        
+        if (args.Count != 3)
+            throw new WallEException("DrawLine requiere 3 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+
         int dirX = ClampDirection(Convert.ToInt32(Evaluate(args[0])));
         int dirY = ClampDirection(Convert.ToInt32(Evaluate(args[1])));
         int distance = Convert.ToInt32(Evaluate(args[2]));
-        
-        Vector2I direction = new Vector2I(dirX, dirY);
+
+        Vector2I direction = new(dirX, dirY);
         Vector2I end = position + (direction * distance);
-        
+
         ValidatePosition(end.X, end.Y);
         Canvas.DrawLine(position, end, brushSize, currentColor);
         position = end;
@@ -158,16 +146,17 @@ public class Interpreter
 
     private void HandleDrawCircle(List<ExpressionNode> args)
     {
-        if (args.Count != 3) throw new WallEException("DrawCircle requiere 3 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        
+        if (args.Count != 3)
+            throw new WallEException("DrawCircle requiere 3 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+
         int dirX = ClampDirection(Convert.ToInt32(Evaluate(args[0])));
         int dirY = ClampDirection(Convert.ToInt32(Evaluate(args[1])));
         int radius = Convert.ToInt32(Evaluate(args[2]));
-        
-        Vector2I direction = new Vector2I(dirX, dirY);
+
+        Vector2I direction = new(dirX, dirY);
         Vector2I center = position + (direction * radius);
-        
+
         ValidatePosition(center.X, center.Y);
         Canvas.DrawCircle(center, radius, brushSize, currentColor);
         position = center;
@@ -175,18 +164,19 @@ public class Interpreter
 
     private void HandleDrawRectangle(List<ExpressionNode> args)
     {
-        if (args.Count != 5) throw new WallEException("DrawRectangle requiere 5 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        
+        if (args.Count != 5)
+            throw new WallEException("DrawRectangle requiere 5 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+
         int dirX = ClampDirection(Convert.ToInt32(Evaluate(args[0])));
         int dirY = ClampDirection(Convert.ToInt32(Evaluate(args[1])));
         int distance = Convert.ToInt32(Evaluate(args[2]));
         int width = Convert.ToInt32(Evaluate(args[3]));
         int height = Convert.ToInt32(Evaluate(args[4]));
-        
-        Vector2I direction = new Vector2I(dirX, dirY);
+
+        Vector2I direction = new(dirX, dirY);
         Vector2I center = position + (direction * distance);
-        
+
         ValidatePosition(center.X, center.Y);
         Canvas.DrawRectangle(center, width, height, brushSize, currentColor);
         position = center;
@@ -194,8 +184,9 @@ public class Interpreter
 
     private void HandleFill()
     {
-        if (!spawned) throw new WallEException("Ejecuta Spawn primero", 
-            WallEException.ErrorType.Semantico);
+        if (!spawned)
+            throw new WallEException("Ejecuta Spawn primero",
+                WallEException.ErrorType.Semantico);
         Canvas.Fill(position, currentColor);
     }
 
@@ -204,45 +195,42 @@ public class Interpreter
         variables[assignment.Variable] = Evaluate(assignment.Expression);
     }
 
-    private int HandleGoTo(GoToNode gotoNode, int currentPc)
+    private bool HandleGoTo(GoToNode gotoNode)
     {
-        bool condition = Convert.ToBoolean(Evaluate(gotoNode.Condition));
-        if (!condition) return currentPc;
-        
-        if (!labels.TryGetValue(gotoNode.Label, out int targetLine))
-            throw new WallEException($"Etiqueta no definida: {gotoNode.Label}", 
+        object conditionValue = Evaluate(gotoNode.Condition);
+        int conditionInt = Convert.ToInt32(conditionValue);
+
+        if (conditionInt != 0)
+        {
+            string labelKey = gotoNode.Label.ToLower();
+            if (labels.TryGetValue(labelKey, out int targetPc))
+            {
+                programCounter = targetPc;
+                return true;
+            }
+            throw new WallEException($"Etiqueta no definida: {gotoNode.Label}",
                 WallEException.ErrorType.Semantico, gotoNode.LineNumber);
-        
-        return targetLine - 1;
+        }
+        return false;
     }
 
     private object Evaluate(ExpressionNode node)
     {
-        try
+        return node switch
         {
-            return node switch
-            {
-                LiteralNode lit => lit.Value,
-                VariableNode var => GetVariableValue(var),
-                BinaryNode bin => EvaluateBinary(bin),
-                FunctionCallNode func => EvaluateFunction(func),
-                _ => throw new WallEException("Tipo de expresión no soportado", 
-                    WallEException.ErrorType.Sintaxis, node.LineNumber)
-            };
-        }
-        catch (Exception ex)
-        {
-            throw new WallEException($"Error evaluando expresión: {ex.Message}", 
-                WallEException.ErrorType.Ejecucion, node.LineNumber, "", ex);
-        }
+            LiteralNode lit => lit.Value,
+            VariableNode var => GetVariableValue(var),
+            BinaryNode bin => EvaluateBinary(bin),
+            FunctionCallNode func => EvaluateFunction(func),
+            _ => throw new WallEException("Tipo de expresión no soportado",
+                WallEException.ErrorType.Sintaxis, node.LineNumber)
+        };
     }
 
     private object GetVariableValue(VariableNode var)
     {
         if (!variables.ContainsKey(var.Name))
-            throw new WallEException($"Variable no definida: {var.Name}", 
-                WallEException.ErrorType.Semantico, var.LineNumber);
-        
+            variables[var.Name] = 0; // inicializar automáticamente
         return variables[var.Name];
     }
 
@@ -250,6 +238,14 @@ public class Interpreter
     {
         dynamic left = Evaluate(bin.Left);
         dynamic right = Evaluate(bin.Right);
+
+        if (bin.Operator is TokenType.Plus or TokenType.Minus or TokenType.Multiply
+            or TokenType.Divide or TokenType.Power or TokenType.Modulo)
+        {
+            if (!(left is int) || !(right is int))
+                throw new WallEException($"Operandos deben ser numéricos para '{bin.Operator}'",
+                    WallEException.ErrorType.Ejecucion, bin.LineNumber);
+        }
 
         ValidateOperands(bin.Operator, left, right);
 
@@ -266,9 +262,9 @@ public class Interpreter
             TokenType.Less => left < right,
             TokenType.GreaterEqual => left >= right,
             TokenType.LessEqual => left <= right,
-            TokenType.And => left && right,
-            TokenType.Or => left || right,
-            _ => throw new WallEException($"Operador no soportado: {bin.Operator}", 
+            TokenType.And => left != 0 && right != 0,
+            TokenType.Or => left != 0 || right != 0,
+            _ => throw new WallEException($"Operador no soportado: {bin.Operator}",
                 WallEException.ErrorType.Sintaxis, bin.LineNumber)
         };
     }
@@ -284,48 +280,52 @@ public class Interpreter
             "IsBrushColor" => HandleIsBrushColor(func.Arguments),
             "IsBrushSize" => HandleIsBrushSize(func.Arguments),
             "IsCanvasColor" => HandleIsCanvasColor(func.Arguments),
-            _ => throw new WallEException($"Función no definida: {func.FunctionName}", 
+            _ => throw new WallEException($"Función no definida: {func.FunctionName}",
                 WallEException.ErrorType.Semantico, func.LineNumber)
         };
     }
 
     private int HandleGetColorCount(List<ExpressionNode> args)
     {
-        if (args.Count != 5) throw new WallEException("GetColorCount requiere 5 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        
+        if (args.Count != 5)
+            throw new WallEException("GetColorCount requiere 5 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+
         string color = Evaluate(args[0]).ToString();
         int x1 = Convert.ToInt32(Evaluate(args[1]));
         int y1 = Convert.ToInt32(Evaluate(args[2]));
         int x2 = Convert.ToInt32(Evaluate(args[3]));
         int y2 = Convert.ToInt32(Evaluate(args[4]));
-        
+
         return Canvas.GetColorCount(ParseColor(color), x1, y1, x2, y2);
     }
 
     private int HandleIsBrushColor(List<ExpressionNode> args)
     {
-        if (args.Count != 1) throw new WallEException("IsBrushColor requiere 1 argumento", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+        if (args.Count != 1)
+            throw new WallEException("IsBrushColor requiere 1 argumento",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
         return currentColor == ParseColor(Evaluate(args[0]).ToString()) ? 1 : 0;
     }
 
     private int HandleIsBrushSize(List<ExpressionNode> args)
     {
-        if (args.Count != 1) throw new WallEException("IsBrushSize requiere 1 argumento", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+        if (args.Count != 1)
+            throw new WallEException("IsBrushSize requiere 1 argumento",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
         return brushSize == Convert.ToInt32(Evaluate(args[0])) ? 1 : 0;
     }
 
     private int HandleIsCanvasColor(List<ExpressionNode> args)
     {
-        if (args.Count != 3) throw new WallEException("IsCanvasColor requiere 3 argumentos", 
-            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        
+        if (args.Count != 3)
+            throw new WallEException("IsCanvasColor requiere 3 argumentos",
+                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+
         string color = Evaluate(args[0]).ToString();
         int vertical = Convert.ToInt32(Evaluate(args[1]));
         int horizontal = Convert.ToInt32(Evaluate(args[2]));
-        
+
         Vector2I checkPos = position + new Vector2I(horizontal, vertical);
         return Canvas.CheckColor(checkPos, ParseColor(color)) ? 1 : 0;
     }
@@ -338,9 +338,9 @@ public class Interpreter
             if (program.Statements[i] is LabelNode label)
             {
                 if (labels.ContainsKey(label.Name))
-                    throw new WallEException($"Etiqueta duplicada: {label.Name}", 
+                    throw new WallEException($"Etiqueta duplicada: {label.Name}",
                         WallEException.ErrorType.Semantico, i);
-                labels[label.Name] = i;
+                labels[label.Name.ToLower()] = i;
             }
         }
     }
@@ -348,22 +348,23 @@ public class Interpreter
     private void ValidatePosition(int x, int y)
     {
         if (!Canvas.IsPositionValid(x, y))
-            throw new WallEException($"Posición inválida: ({x}, {y})", 
+            throw new WallEException($"Posición inválida: ({x}, {y})",
                 WallEException.ErrorType.Ejecucion);
     }
 
     private Color ParseColor(string color)
     {
         if (!colorMap.TryGetValue(color, out Color value))
-            throw new WallEException($"Color inválido: {color}", 
+            throw new WallEException($"Color inválido: {color}",
                 WallEException.ErrorType.Semantico);
         return value;
     }
 
     private int AdjustBrushSize(int size)
     {
-        if (size <= 0) throw new WallEException("Tamaño de pincel debe ser positivo", 
-            WallEException.ErrorType.Semantico);
+        if (size <= 0)
+            throw new WallEException("Tamaño de pincel debe ser positivo",
+                WallEException.ErrorType.Semantico);
         return size % 2 == 0 ? size - 1 : size;
     }
 
@@ -376,15 +377,13 @@ public class Interpreter
     {
         if (op == TokenType.Divide && right == 0)
             throw new WallEException("División por cero", WallEException.ErrorType.Ejecucion);
-        
         if (op == TokenType.Modulo && right == 0)
             throw new WallEException("Módulo por cero", WallEException.ErrorType.Ejecucion);
     }
 
     private dynamic SafeDivide(dynamic a, dynamic b)
     {
-        if (b == 0) throw new WallEException("División por cero", 
-            WallEException.ErrorType.Ejecucion);
+        if (b == 0) throw new WallEException("División por cero", WallEException.ErrorType.Ejecucion);
         return a / b;
     }
 

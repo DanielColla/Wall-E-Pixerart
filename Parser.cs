@@ -43,18 +43,20 @@ public class Parser
 
     private ASTNode ParseStatement()
     {
-        
-        if (Check(TokenType.GoTo)) return ParseGoTo();
-        if (IsCommand(Peek().Type)) return ParseCommand();
+        // Handle assignments FIRST
         if (Check(TokenType.Identifier) && PeekNext()?.Type == TokenType.Assign) 
             return ParseAssignment();
         
+        // Then handle commands
+        if (Check(TokenType.GoTo)) return ParseGoTo();
+        if (IsCommand(Peek().Type)) return ParseCommand();
+        
+        // Then handle labels
         if (Check(TokenType.Identifier) && IsLabelLine())
             return ParseLabel();
         
         throw ParseError("Instrucción no válida", $"Token inesperado: {Peek().Lexeme} ({Peek().Type})");
     }
-
     private bool IsCommand(TokenType type)
     {
         return type switch
@@ -66,12 +68,18 @@ public class Parser
         };
     }
 
-    private bool IsLabelLine()
+   /* private bool IsLabelLine()
     {
         int temp = current;
         while (temp < tokens.Count && tokens[temp].Type == TokenType.Identifier) temp++;
         return temp < tokens.Count && tokens[temp].Type == TokenType.NewLine;
-    }
+    }*/
+    private bool IsLabelLine()
+{
+    int temp = current;
+    return temp + 1 < tokens.Count && tokens[temp].Type == TokenType.Identifier &&
+           (tokens[temp + 1].Type == TokenType.NewLine || tokens[temp + 1].Type == TokenType.EOF);
+}
 
     private CommandNode ParseCommand()
     {
@@ -150,29 +158,29 @@ public class Parser
     }
 
 private GoToNode ParseGoTo()
+{
+    Token gotoToken = Advance();
+    try
     {
-        Token gotoToken = Advance();
-        try
-        {
-            Consume(TokenType.LBracket, "Se esperaba '[' después de GoTo", gotoToken.Line);
-            Token label = Consume(TokenType.Identifier, "Se esperaba nombre de etiqueta", gotoToken.Line);
-            Consume(TokenType.RBracket, "Se esperaba ']' después de la etiqueta", gotoToken.Line);
-            Consume(TokenType.LParen, "Se esperaba '(' antes de la condición", gotoToken.Line);
-            ExpressionNode condition = ParseExpression();
-            Consume(TokenType.RParen, "Se esperaba ')' después de la condición", gotoToken.Line);
-            return new GoToNode(label.Lexeme, condition) { LineNumber = gotoToken.Line };
-        }
-        catch (WallEException ex)
-        {
-            throw new WallEException(
-                message: $"Error en GoTo: {ex.Message}",
-                type: WallEException.ErrorType.Sintaxis,
-                line: ex.Line,
-                context: $"Estructura: GoTo [etiqueta] (condición)",
-                inner: ex
-            );
-        }
+        Consume(TokenType.LBracket, "Se esperaba '[' después de GoTo", gotoToken.Line);
+        Token label = Consume(TokenType.Identifier, "Se esperaba nombre de etiqueta", gotoToken.Line);
+        Consume(TokenType.RBracket, "Se esperaba ']' después de la etiqueta", gotoToken.Line);
+        Consume(TokenType.LParen, "Se esperaba '(' antes de la condición", gotoToken.Line);
+        ExpressionNode condition = ParseExpression();
+        Consume(TokenType.RParen, "Se esperaba ')' después de la condición", gotoToken.Line);
+        return new GoToNode(label.Lexeme, condition) { LineNumber = gotoToken.Line };
     }
+    catch (WallEException ex)
+    {
+        throw new WallEException(
+            message: $"Error en GoTo: {ex.Message}",
+            type: WallEException.ErrorType.Sintaxis,
+            line: ex.Line,
+            context: $"Estructura: GoTo [etiqueta] (condición)",
+            inner: ex
+        );
+    }
+}
 
 
     private ExpressionNode ParseExpression() => ParseLogicalOr();

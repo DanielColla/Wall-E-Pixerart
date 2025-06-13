@@ -1,0 +1,15 @@
+Spawn(30, 30)     
+Color("Purple")
+
+GoTo [seccion2] (3 < 5)  
+
+seccion1
+
+DrawRectangle(0, 1, 100, 100, 10)
+GoTo [fin] (1)
+
+seccion2
+DrawLine(1, 0, 80)   
+GoTo [fin] (1)
+
+fin
