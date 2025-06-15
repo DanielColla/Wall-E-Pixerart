@@ -13,7 +13,7 @@ public partial class CanvasRenderer : TextureRect
     public void Initialize(int canvasSize)
     {
         size = canvasSize;
-        image = Image.Create(size, size, false, Image.Format.Rgba8);
+        image = Godot.Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
         image.Fill(Colors.White);
         texture = ImageTexture.CreateFromImage(image);
         Texture = texture;

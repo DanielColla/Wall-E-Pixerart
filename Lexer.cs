@@ -9,8 +9,9 @@ public class Lexer
     private int start = 0;
     private int current = 0;
     private int line = 1;
+    private bool debugMode = true;
 
-    // Diccionario seguro sin comparador
+    
     private static readonly Dictionary<string, TokenType> keywords = 
         new Dictionary<string, TokenType>()
     {
@@ -45,7 +46,10 @@ public class Lexer
             switch (c)
             {
                 case ' ': case '\r': case '\t': break;
-                case '\n': AddToken(tokens, TokenType.NewLine, null); line++; break;
+                case '\n': 
+                    AddToken(tokens, TokenType.NewLine, null); 
+                    line++; 
+                    break;
                 case '(': AddToken(tokens, TokenType.LParen, null); break;
                 case ')': AddToken(tokens, TokenType.RParen, null); break;
                 case '[': AddToken(tokens, TokenType.LBracket, null); break;
@@ -58,7 +62,7 @@ public class Lexer
                 case '%': AddToken(tokens, TokenType.Modulo, null); break;
                 case '=': HandleEqual(tokens); break;
                 case '>': HandleGreater(tokens); break;
-                case '<': HandleLess(tokens); break;
+                case '<': HandleLessOrAssign(tokens); break; // Cambiado a nuevo método
                 case '"': String(tokens); break;
                 case '&' when Match('&'): AddToken(tokens, TokenType.And, null); break;
                 case '|' when Match('|'): AddToken(tokens, TokenType.Or, null); break;
@@ -71,20 +75,51 @@ public class Lexer
             }
         }
         tokens.Add(new Token(TokenType.EOF, "", null, line));
+        
+        if (debugMode) LogTokens(tokens);
         return tokens;
     }
 
-    private void HandleMinus(List<Token> tokens)
+    private void HandleLessOrAssign(List<Token> tokens)
     {
-        if (Match('<')) 
+        if (Match('-')) 
         {
             AddToken(tokens, TokenType.Assign, "<-");
+            Log($"Tokenizado operador de asignación '<-' en línea {line}");
+        }
+        else if (Match('='))
+        {
+            AddToken(tokens, TokenType.LessEqual, null);
         }
         else
         {
-            AddToken(tokens, TokenType.Minus, null);
+            AddToken(tokens, TokenType.Less, null);
         }
     }
+private void Log(string message)
+    {
+        if (debugMode) 
+        {
+            GD.Print($"[LEXER L:{line}] {message}");
+        }
+    }
+    private void HandleMinus(List<Token> tokens)
+    {
+        // Solo manejar menos simple ahora
+        AddToken(tokens, TokenType.Minus, null);
+    }
+
+    private void LogTokens(List<Token> tokens)
+    {
+        GD.Print("=== TOKENS GENERADOS ===");
+        foreach (var token in tokens)
+        {
+            GD.Print($"[Línea {token.Line}] {token.Type} '{token.Lexeme}'");
+        }
+    }
+ 
+
+
 
     private void HandleAsterisk(List<Token> tokens)
     {

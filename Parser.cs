@@ -1,62 +1,140 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Godot;
 
 public class Parser
 {
     private readonly List<Token> tokens;
     private int current = 0;
+    private bool debugMode = true;
 
     public Parser(List<Token> tokens) => this.tokens = tokens;
 
     public ProgramNode ParseProgram()
     {
-        ProgramNode program = new();
-        
-        while (Match(TokenType.NewLine)) { }
-        
-        while (!IsAtEnd())
+        ProgramNode program = new ProgramNode();
+        int errorCount = 0;
+        const int maxErrors = 50;
+
+        Log("Iniciando análisis del programa...");
+
+        while (!IsAtEnd() && errorCount < maxErrors)
         {
             try
             {
+                // Manejar EOF explícitamente
+                if (Check(TokenType.EOF)) break;
+
+                // Saltar líneas vacías
                 if (Match(TokenType.NewLine)) continue;
-                
+
                 ASTNode statement = ParseStatement();
-                statement.LineNumber = Previous().Line;
+                statement.LineNumber = Peek().Line;
                 program.Statements.Add(statement);
-                
+                Log($"Declaración añadida: {statement.GetType().Name} en línea {statement.LineNumber}");
+
+                // Manejar nueva línea al final de la declaración
                 if (!IsAtEnd() && !Check(TokenType.EOF))
                 {
-                    while (Match(TokenType.NewLine)) { }
+                    Match(TokenType.NewLine);
                 }
             }
             catch (WallEException e)
             {
-                GD.PrintErr($"Error de parsing: {e.Message}");
-                while (!IsAtEnd() && !Check(TokenType.NewLine)) Advance();
+                errorCount++;
+                GD.PrintErr($"ERROR DE PARSING: {e.Message}");
+                if (!string.IsNullOrEmpty(e.Context))
+                    GD.PrintErr($"CONTEXTO: {e.Context}");
+
+                // Recuperación de errores: avanzar hasta próximo punto seguro
+                while (!IsAtEnd() &&
+                      !Check(TokenType.NewLine) &&
+                      !Check(TokenType.EOF))
+                {
+                    Advance();
+                }
+
+                // Consumir el token de nueva línea si existe
                 Match(TokenType.NewLine);
             }
         }
+
+        Log($"Análisis completado. Errores encontrados: {errorCount}");
         return program;
     }
 
     private ASTNode ParseStatement()
     {
-        // Handle assignments FIRST
-        if (Check(TokenType.Identifier) && PeekNext()?.Type == TokenType.Assign) 
+        Log($"Analizando declaración en token: {Peek().Type} '{Peek().Lexeme}'");
+
+        // 1. Asignaciones: identificador seguido de operador de asignación
+        if (Check(TokenType.Identifier) && NextTokenIs(TokenType.Assign))
+        {
+            Log($"Detectada asignación: {Peek().Lexeme} <- ...");
             return ParseAssignment();
-        
-        // Then handle commands
-        if (Check(TokenType.GoTo)) return ParseGoTo();
-        if (IsCommand(Peek().Type)) return ParseCommand();
-        
-        // Then handle labels
+        }
+
+        // 2. Comandos especiales (GoTo primero)
+        if (Check(TokenType.GoTo))
+        {
+            Log("Detectado comando GoTo");
+            return ParseGoTo();
+        }
+
+        // 3. Comandos regulares
+        if (IsCommand(Peek().Type))
+        {
+            Log($"Detectado comando: {Peek().Type}");
+            return ParseCommand();
+        }
+
+        // 4. Etiquetas (identificador al inicio de línea)
         if (Check(TokenType.Identifier) && IsLabelLine())
+        {
+            Log($"Detectada etiqueta: {Peek().Lexeme}");
             return ParseLabel();
-        
-        throw ParseError("Instrucción no válida", $"Token inesperado: {Peek().Lexeme} ({Peek().Type})");
+        }
+
+        throw ParseError("Instrucción no válida",
+            $"Token inesperado: '{Peek().Lexeme}' ({Peek().Type})");
     }
+
+    private bool NextTokenIs(TokenType type)
+    {
+        int nextIndex = current + 1;
+        if (nextIndex < tokens.Count)
+        {
+            return tokens[nextIndex].Type == type;
+        }
+        return false;
+    }
+
+    private bool IsLabelLine()
+    {
+        int nextIndex = current + 1;
+        if (nextIndex >= tokens.Count) return true;
+
+        Token nextToken = tokens[nextIndex];
+        return nextToken.Type == TokenType.NewLine ||
+               nextToken.Type == TokenType.EOF;
+    }
+
+    private AssignmentNode ParseAssignment()
+    {
+        Token variable = Consume(TokenType.Identifier, "Se esperaba nombre de variable");
+        Log($"Variable de asignación: {variable.Lexeme}");
+
+        // Consumir el operador de asignación
+        Consume(TokenType.Assign, "Se esperaba '<-' después del nombre de variable", variable.Line);
+        Log("Operador de asignación consumido");
+
+        ExpressionNode expr = ParseExpression();
+        Log($"Expresión de asignación analizada: {expr.GetType().Name}");
+
+        return new AssignmentNode(variable.Lexeme, expr) { LineNumber = variable.Line };
+    }
+
+    
     private bool IsCommand(TokenType type)
     {
         return type switch
@@ -67,33 +145,19 @@ public class Parser
             _ => false
         };
     }
-
-   /* private bool IsLabelLine()
-    {
-        int temp = current;
-        while (temp < tokens.Count && tokens[temp].Type == TokenType.Identifier) temp++;
-        return temp < tokens.Count && tokens[temp].Type == TokenType.NewLine;
-    }*/
-    private bool IsLabelLine()
-{
-    int temp = current;
-    return temp + 1 < tokens.Count && tokens[temp].Type == TokenType.Identifier &&
-           (tokens[temp + 1].Type == TokenType.NewLine || tokens[temp + 1].Type == TokenType.EOF);
-}
-
     private CommandNode ParseCommand()
     {
         Token commandToken = Advance();
         string commandName = commandToken.Lexeme;
-        
+
         try
         {
             Consume(TokenType.LParen, $"Se esperaba '(' después del comando {commandName}", commandToken.Line);
-            
+
             List<ExpressionNode> args = ParseArguments();
-            
+
             Consume(TokenType.RParen, $"Se esperaba ')' después de los argumentos de {commandName}", commandToken.Line);
-            
+
             return new CommandNode(commandName, args) { LineNumber = commandToken.Line };
         }
         catch (WallEException ex)
@@ -132,24 +196,7 @@ public class Parser
         return args;
     }
 
-    private AssignmentNode ParseAssignment()
-    {
-        Token variable = Consume(TokenType.Identifier, "Se esperaba nombre de variable");
-        
-        if (!Check(TokenType.Assign))
-        {
-            throw new WallEException(
-                message: "Operador de asignación inválido",
-                type: WallEException.ErrorType.Sintaxis,
-                line: variable.Line,
-                context: $"Se esperaba '<-' después de '{variable.Lexeme}'"
-            );
-        }
-        Advance();
-        
-        ExpressionNode expr = ParseExpression();
-        return new AssignmentNode(variable.Lexeme, expr) { LineNumber = variable.Line };
-    }
+
 
     private LabelNode ParseLabel()
     {
@@ -157,30 +204,30 @@ public class Parser
         return new LabelNode(label.Lexeme) { LineNumber = label.Line };
     }
 
-private GoToNode ParseGoTo()
-{
-    Token gotoToken = Advance();
-    try
+    private GoToNode ParseGoTo()
     {
-        Consume(TokenType.LBracket, "Se esperaba '[' después de GoTo", gotoToken.Line);
-        Token label = Consume(TokenType.Identifier, "Se esperaba nombre de etiqueta", gotoToken.Line);
-        Consume(TokenType.RBracket, "Se esperaba ']' después de la etiqueta", gotoToken.Line);
-        Consume(TokenType.LParen, "Se esperaba '(' antes de la condición", gotoToken.Line);
-        ExpressionNode condition = ParseExpression();
-        Consume(TokenType.RParen, "Se esperaba ')' después de la condición", gotoToken.Line);
-        return new GoToNode(label.Lexeme, condition) { LineNumber = gotoToken.Line };
+        Token gotoToken = Advance();
+        try
+        {
+            Consume(TokenType.LBracket, "Se esperaba '[' después de GoTo", gotoToken.Line);
+            Token label = Consume(TokenType.Identifier, "Se esperaba nombre de etiqueta", gotoToken.Line);
+            Consume(TokenType.RBracket, "Se esperaba ']' después de la etiqueta", gotoToken.Line);
+            Consume(TokenType.LParen, "Se esperaba '(' antes de la condición", gotoToken.Line);
+            ExpressionNode condition = ParseExpression();
+            Consume(TokenType.RParen, "Se esperaba ')' después de la condición", gotoToken.Line);
+            return new GoToNode(label.Lexeme, condition) { LineNumber = gotoToken.Line };
+        }
+        catch (WallEException ex)
+        {
+            throw new WallEException(
+                message: $"Error en GoTo: {ex.Message}",
+                type: WallEException.ErrorType.Sintaxis,
+                line: ex.Line,
+                context: $"Estructura: GoTo [etiqueta] (condición)",
+                inner: ex
+            );
+        }
     }
-    catch (WallEException ex)
-    {
-        throw new WallEException(
-            message: $"Error en GoTo: {ex.Message}",
-            type: WallEException.ErrorType.Sintaxis,
-            line: ex.Line,
-            context: $"Estructura: GoTo [etiqueta] (condición)",
-            inner: ex
-        );
-    }
-}
 
 
     private ExpressionNode ParseExpression() => ParseLogicalOr();
@@ -284,17 +331,17 @@ private GoToNode ParseGoTo()
     {
         if (Match(TokenType.Number))
             return new LiteralNode(Previous().Literal) { LineNumber = Previous().Line };
-        
+
         if (Match(TokenType.String))
             return new LiteralNode(Previous().Literal) { LineNumber = Previous().Line };
-        
+
         if (Match(TokenType.LParen))
         {
             ExpressionNode expr = ParseExpression();
             Consume(TokenType.RParen, "Se esperaba ')' después de la expresión");
             return expr;
         }
-        
+
         if (Match(TokenType.Identifier))
         {
             string identifier = Previous().Lexeme;
@@ -303,7 +350,7 @@ private GoToNode ParseGoTo()
             else
                 return new VariableNode(identifier) { LineNumber = Previous().Line };
         }
-        
+
         throw ParseError("Expresión primaria inválida", $"Token: {Peek().Lexeme}");
     }
 
@@ -314,14 +361,15 @@ private GoToNode ParseGoTo()
         {
             Consume(TokenType.LParen, $"Se esperaba '(' después de la función {functionName}", funcToken.Line);
             List<ExpressionNode> args = new();
-            
+
             if (!Check(TokenType.RParen))
             {
-                do {
+                do
+                {
                     args.Add(ParseExpression());
                 } while (Match(TokenType.Comma));
             }
-            
+
             Consume(TokenType.RParen, $"Se esperaba ')' después de los argumentos de {functionName}", funcToken.Line);
             return new FunctionCallNode(functionName, args) { LineNumber = funcToken.Line };
         }
@@ -340,7 +388,7 @@ private GoToNode ParseGoTo()
     private Token Consume(TokenType type, string message, int? line = null)
     {
         if (Check(type)) return Advance();
-        
+
         Token errorToken = Peek();
         throw new WallEException(
             message: message,
@@ -350,24 +398,95 @@ private GoToNode ParseGoTo()
         );
     }
 
+    
+
+    #region Helpers
+    private bool Check(TokenType type)
+    {
+        // Verificar si estamos al final de los tokens
+        if (IsAtEnd())
+        {
+            // Solo EOF coincide cuando estamos al final
+            return type == TokenType.EOF;
+        }
+        return Peek().Type == type;
+    }
+
+    private Token Advance()
+    {
+        // Solo avanzar si no estamos al final
+        if (!IsAtEnd())
+        {
+            current++;
+        }
+        return Previous();
+    }
+
+    private bool IsAtEnd()
+    {
+        return current >= tokens.Count;
+    }
+
+    private Token Peek()
+    {
+        // Devolver token EOF si estamos al final
+        if (IsAtEnd())
+        {
+            // Crear un token EOF si no existe uno
+            return tokens.Count > 0 ? tokens[tokens.Count - 1] :
+                new Token(TokenType.EOF, "", null, 0);
+        }
+        return tokens[current];
+    }
+
+    private Token Previous()
+    {
+        // Manejar caso cuando no hay tokens anteriores
+        if (current <= 0)
+        {
+            // Si no hay tokens, crear uno vacío
+            return tokens.Count > 0 ? tokens[0] :
+                new Token(TokenType.EOF, "", null, 0);
+        }
+
+        // Devolver token anterior seguro
+        return tokens[Math.Min(current - 1, tokens.Count - 1)];
+    }
+    private Token PeekNext()
+    {
+        if (current + 1 >= tokens.Count) return null;
+        return tokens[current + 1];
+    }
+    private bool Match(params TokenType[] types)
+    {
+        foreach (TokenType type in types)
+        {
+            if (Check(type))
+            {
+                Advance();
+                return true;
+            }
+        }
+        return false;
+    }
+    #endregion
+    #region Utilidades de depuración
+    private void Log(string message)
+    {
+        if (debugMode)
+        {
+            GD.Print($"[PARSER L:{Peek().Line}] {message}");
+        }
+    }
     private WallEException ParseError(string message, string context = "")
     {
         Token token = IsAtEnd() ? Previous() : Peek();
         return new WallEException(
-            message: message,
+            message: $"[Línea {token.Line}] {message}",
             type: WallEException.ErrorType.Sintaxis,
             line: token.Line,
             context: context
         );
     }
-
-    #region Helpers
-    private bool Check(TokenType type) => !IsAtEnd() && Peek().Type == type;
-    private Token Advance() => tokens[current++];
-    private bool IsAtEnd() => current >= tokens.Count;
-    private Token Peek() => tokens[current];
-    private Token Previous() => tokens[current - 1];
-    private Token PeekNext() => current + 1 < tokens.Count ? tokens[current + 1] : null;
-    private bool Match(params TokenType[] types) => types.Any(Check) ? (Advance() != null) : false;
     #endregion
 }

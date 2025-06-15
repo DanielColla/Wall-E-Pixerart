@@ -78,10 +78,10 @@ layout_mode = 2
 
 [node name="Lienzo" type="TextureRect" parent="PanelPrincipal"]
 layout_mode = 0
-offset_left = 650.0
-offset_top = 100.0
-offset_right = 1162.0
-offset_bottom = 612.0
+offset_left = -34.0
+offset_top = 81.0
+offset_right = 478.0
+offset_bottom = 593.0
 script = ExtResource("2_r0du0")
 
 [node name="CasillaVerificacion" type="CheckBox" parent="PanelPrincipal"]
