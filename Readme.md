@@ -92,6 +92,7 @@ IsBrushColor, IsBrushSize, IsCanvasColor
 
 Ejemplo de error:
 Size <- 5  # ERROR: Size es palabra reservada
+
 Color <- 3 # ERROR: Color es palabra reservada
 
 ## 🚀 Extensibilidad del Proyecto
