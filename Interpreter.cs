@@ -25,31 +25,26 @@ public class Interpreter
     {
         ResetState();
         PreprocessLabels(program);
-        programCounter = 0;
-
-        Log("Iniciando ejecución del programa...");
         
         while (programCounter < program.Statements.Count)
         {
-            try
+            var stmt = program.Statements[programCounter];
+            Log($"Ejecutando línea {programCounter}: {stmt.GetType().Name}");
+            
+            // Manejar el salto antes de ejecutar la instrucción
+            if (stmt is GoToNode gotoNode)
             {
-                var stmt = program.Statements[programCounter];
-                Log($"Ejecutando línea {programCounter+1}: {stmt.GetType().Name}");
-                
-                HandleStatement(stmt);
-                programCounter++;
+                if (HandleGoTo(gotoNode))
+                {
+                    // El salto ocurrió, continuamos con el nuevo programCounter
+                    continue;
+                }
             }
-            catch (WallEException ex)
-            {
-                GD.PrintErr($"ERROR EN EJECUCIÓN: {ex.Message}");
-                if (!string.IsNullOrEmpty(ex.Context))
-                    GD.PrintErr($"CONTEXTO: {ex.Context}");
-                
-                programCounter++;
-            }
+            
+            // Ejecutar la instrucción normal
+            HandleStatement(stmt);
+            programCounter++;
         }
-        
-        Log("Ejecución del programa completada");
     }
 
     private void ResetState()
@@ -67,15 +62,16 @@ public class Interpreter
     {
         switch (stmt)
         {
+            case AssignmentNode assignment:
+                // Actualizar el valor de la variable
+                variables[assignment.Variable] = Evaluate(assignment.Expression);
+                Log($"Variable asignada: {assignment.Variable} = {variables[assignment.Variable]}");
+                break;
+                
             case CommandNode cmd:
                 ExecuteCommand(cmd);
                 break;
-                
-            case AssignmentNode assignment:
-                object value = Evaluate(assignment.Expression);
-                this.variables[assignment.Variable] = value;
-                Log($"Variable asignada: {assignment.Variable} = {value}");
-                break;
+            
                 
             case GoToNode gotoNode:
                 if (HandleGoTo(gotoNode)) 
@@ -253,25 +249,40 @@ public class Interpreter
         variables[assignment.Variable] = Evaluate(assignment.Expression);
     }
 
-    private bool HandleGoTo(GoToNode gotoNode)
+   private bool HandleGoTo(GoToNode gotoNode)
     {
+        // Evaluar la condición
         object conditionValue = Evaluate(gotoNode.Condition);
-        int conditionInt = Convert.ToInt32(conditionValue);
-
-        if (conditionInt != 0)
+        bool shouldJump = false;
+        
+        // Convertir a booleano (considerando 1 como true, 0 como false)
+        if (conditionValue is int intValue)
+        {
+            shouldJump = intValue != 0;
+        }
+        else if (conditionValue is bool boolValue)
+        {
+            shouldJump = boolValue;
+        }
+        
+        if (shouldJump)
         {
             string labelKey = gotoNode.Label.ToLower();
-            if (labels.TryGetValue(labelKey, out int targetPc))
+            if (labels.ContainsKey(labelKey))
             {
-                programCounter = targetPc;
-                return true;
+                Log($"Saltando a etiqueta: {labelKey} en posición {labels[labelKey]}");
+                programCounter = labels[labelKey];  // Actualizar el contador
+                return true;  // Indicar que se realizó el salto
             }
-            throw new WallEException($"Etiqueta no definida: {gotoNode.Label}",
-                WallEException.ErrorType.Semantico, gotoNode.LineNumber);
+            else
+            {
+                throw new WallEException($"Etiqueta no encontrada: {gotoNode.Label}", 
+                    WallEException.ErrorType.Semantico, gotoNode.LineNumber);
+            }
         }
-        return false;
+        
+        return false;  // No se realizó el salto
     }
-
    
 
     #region Utilidades de depuración
@@ -532,7 +543,7 @@ private int HandleIsCanvasColor(List<object> args)
 }
     
 
-   private void PreprocessLabels(ProgramNode program)
+  private void PreprocessLabels(ProgramNode program)
     {
         labels.Clear();
         for (int i = 0; i < program.Statements.Count; i++)
@@ -541,13 +552,16 @@ private int HandleIsCanvasColor(List<object> args)
             {
                 string key = label.Name.ToLower();
                 if (labels.ContainsKey(key))
-                    throw new WallEException($"Etiqueta duplicada: {label.Name}",
-                        WallEException.ErrorType.Semantico, i);
+                {
+                    throw new WallEException($"Etiqueta duplicada: {label.Name}", 
+                        WallEException.ErrorType.Semantico, label.LineNumber);
+                }
                 labels[key] = i;
+                Log($"Registrada etiqueta: {key} en posición {i}");
             }
         }
     }
-
+    
     private void ValidatePosition(int x, int y)
     {
         if (!Canvas.IsPositionValid(x, y))
