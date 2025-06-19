@@ -126,7 +126,7 @@ Godot Engine 4.4.1 o superior
 .NET SDK 6.0 o superior (para compilación C#)
 
 Clonar el repositorio:
-git clone https://github.com/tuusuario/wall-e.git
+git clone https://github.com/DanielColla/Wall-E-Pixerart.git
 cd wall-e
 
 Abrir en Godot:
