@@ -1,11 +1,6 @@
 # 🧑‍💻 WallE Programming Environment - Segundo Proyecto de Primer Año  
 **Universidad de La Habana - Facultad de Matemática y Computación**  
 *Desarrollado con Godot 4.4.1*  
-
-<p align="center">
-  <img src="https://imgur.com/5XbK7wG.gif" alt="WallE en acción" width="600">
-</p>
-
 ---
 
 ## 🌟 Características Principales
@@ -13,6 +8,7 @@
 ### 🎨 Sistema de Cuadrícula Dinámica
 
 # Ejemplo de creación de arte digital
+
 Spawn(100, 100)
 
 Color("Purple")
@@ -27,7 +23,7 @@ radio <- radio - 5
 
 GoTo[loop_espiral](radio > 10)
 
-Dimensiones soportadas:
+## Dimensiones soportadas:
 
 Mínimo: 16×16 píxeles
 
@@ -41,13 +37,14 @@ Zoom adaptable con scroll del ratón
 
 Posicionamiento preciso con coordenadas enteras
 
-💾 Gestión de Proyectos
+## 💾 Gestión de Proyectos
 Guardado y carga de programas en formato .pw
 
 Historial de archivos recientes
 
 Editor de código con resaltado de sintaxis
-🔧 Comandos Disponibles
+
+## 🔧 Comandos Disponibles
 
 | **Comando**                | **Descripción**                       | **Ejemplo**                |
 | -------------------------- | ------------------------------------- | -------------------------- |
@@ -71,22 +68,23 @@ Editor de código con resaltado de sintaxis
 | `IsBrushSize(n)`                   | 1 si el tamaño es n, 0 si no                    |
 | `IsCanvasColor("col",dx,dy)`       | 1 si el lienzo tiene color en posición relativa |
 
-⚠️ Consideraciones Importantes
-🔢 Trabajo Exclusivo con Enteros
+## ⚠️ Consideraciones Importantes
+## 🔢 Trabajo Exclusivo con Enteros
 El sistema solo soporta valores enteros en todas sus operaciones:
 # Operaciones válidas
 valor <- 5 + 3 * 2  # valor = 11
+
 posY <- GetActualY() / 2  # División entera: 10/2=5
 
 # Operaciones inválidas
 z <- 3.14  # ERROR: No soporta decimales
 
-📐 Límites de la Cuadrícula
+## 📐 Límites de la Cuadrícula
 Todas las coordenadas deben estar dentro de los límites configurados:
 Spawn(500, 500)  # ERROR: Fuera de rango (máximo 400)
 DrawLine(0,1,450) # ERROR: Excede tamaño máximo
 
-🚫 Palabras Reservadas
+## 🚫 Palabras Reservadas
 Estas palabras no pueden usarse como nombres de variables:
 Spawn, Color, Size, DrawLine, DrawCircle, DrawRectangle, Fill, 
 GoTo, GetActualX, GetActualY, GetCanvasSize, GetColorCount,
@@ -94,11 +92,13 @@ IsBrushColor, IsBrushSize, IsCanvasColor
 
 Ejemplo de error:
 Size <- 5  # ERROR: Size es palabra reservada
+
 Color <- 3 # ERROR: Color es palabra reservada
 
-🚀 Extensibilidad del Proyecto
-🧩 Arquitectura Modular
-
+## 🚀 Extensibilidad del Proyecto
+## 🧩 Arquitectura Modular
+Lexer → Parser → Interpreter → CanvasRenderer → Godot Engine
+    
 El sistema está diseñado con módulos independientes que permiten:
 
 Añadir nuevos comandos fácilmente
@@ -109,7 +109,7 @@ Extender el sistema de tipos
 
 Mejorar el renderizado visual
 
-🔌 Módulos Futuros
+## 🔌 Módulos Futuros
 | **Módulo**                | **Estado**  | **Descripción**                      |
 | ------------------------- | ----------- | ------------------------------------ |
 | Funciones trigonométricas | En progreso | `Sin()`, `Cos()`, `Tan()`            |
@@ -118,7 +118,7 @@ Mejorar el renderizado visual
 | Capas múltiples           | Idea        | Sistema de overlays y composición    |
 | Depurador visual          | Backlog     | Paso a paso con inspección de estado |
 
-🛠️ Instalación y Uso
+## 🛠️ Instalación y Uso
 Requisitos previos:
 
 Godot Engine 4.4.1 o superior
@@ -147,41 +147,9 @@ Escribir código en el editor
 
 Presionar "Ejecutar" para ver los resultados
 
-🧪 Ejemplos de Programas
-Patrón Geométrico
-Spawn(100, 100)
-Color("Green")
-tamaño <- 50
-contador <- 0
-
-inicio_loop
-DrawCircle(1, 1, tamaño)
-tamaño <- tamaño - 5
-contador <- contador + 1
-GoTo[inicio_loop](contador < 8)
 
 
-Bandera de Japón
-
-Spawn(200, 200)
-Color("White")
-Fill()
-
-Color("Red")
-DrawCircle(0, 0, 60)
-
-Patrón de Líneas
-
-Spawn(0, 0)
-Color("Blue")
-i <- 0
-
-line_loop
-DrawLine(1, 1, 20)
-i <- i + 1
-GoTo[line_loop](i < 15)
-
-🎓 Objetivos Académicos
+## 🎓 Objetivos Académicos
 Este proyecto cumple con los objetivos de:
 
 Implementar lenguajes de dominio específico (DSL)
@@ -194,7 +162,7 @@ Practicar gestión de estado complejo
 
 Desarrollar sistemas extensibles y mantenibles
 
-🤝 ¡Contribuciones Bienvenidas!
+## 🤝 ¡Contribuciones Bienvenidas!
 ¿Quieres mejorar WallE? ¡Abre un PR!
 
  Implementar funciones trigonométricas
