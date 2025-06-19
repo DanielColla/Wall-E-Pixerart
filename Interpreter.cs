@@ -21,31 +21,43 @@ public class Interpreter
         {"Black", Colors.Black}, {"White", Colors.White}, {"Transparent", Colors.Transparent}
     };
 
-    public void Execute(ProgramNode program)
+ public void Execute(ProgramNode program)
+{
+    GD.Print("=== INICIANDO EJECUCIÓN ===");
+    ResetState();
+    PreprocessLabels(program);
+    
+    while (programCounter < program.Statements.Count)
     {
-        ResetState();
-        PreprocessLabels(program);
-        
-        while (programCounter < program.Statements.Count)
+        var stmt = program.Statements[programCounter];
+        GD.Print($"PC: {programCounter} | Tipo: {stmt.GetType().Name}");
+
+        // 1. Manejar etiquetas (no consumen ejecución)
+        if (stmt is LabelNode)
         {
-            var stmt = program.Statements[programCounter];
-            Log($"Ejecutando línea {programCounter}: {stmt.GetType().Name}");
-            
-            // Manejar el salto antes de ejecutar la instrucción
-            if (stmt is GoToNode gotoNode)
-            {
-                if (HandleGoTo(gotoNode))
-                {
-                    // El salto ocurrió, continuamos con el nuevo programCounter
-                    continue;
-                }
-            }
-            
-            // Ejecutar la instrucción normal
-            HandleStatement(stmt);
             programCounter++;
+            continue;
         }
+
+        // 2. Manejar GoTo antes que otros comandos
+        if (stmt is GoToNode gotoNode)
+        {
+            if (HandleGoTo(gotoNode))
+            {
+                continue; // Saltó, reiniciar ciclo
+            }
+            else
+            {
+                programCounter++; // No saltó, continuar normalmente
+                continue;
+            }
+        }
+
+        // 3. Ejecutar otros comandos
+        HandleStatement(stmt);
+        programCounter++;
     }
+}
 
     private void ResetState()
     {
@@ -95,6 +107,8 @@ public class Interpreter
 
     private void ExecuteCommand(CommandNode cmd)
     {
+        
+    GD.Print($"Ejecutando comando: {cmd.Command} con color: {currentColor}");
         switch (cmd.Command)
         {
             case "Spawn": HandleSpawn(cmd.Arguments); break;
@@ -164,14 +178,19 @@ public class Interpreter
         spawned = true;
     }
 
-    private void HandleColor(List<ExpressionNode> args)
-    {
-        if (args.Count != 1)
-            throw new WallEException("Color requiere 1 argumento",
-                WallEException.ErrorType.Sintaxis, args[0].LineNumber);
-        currentColor = ParseColor(Evaluate(args[0]).ToString());
-    }
-
+   private void HandleColor(List<ExpressionNode> args)
+{
+    if (args.Count != 1)
+        throw new WallEException("Color requiere 1 argumento",
+            WallEException.ErrorType.Sintaxis, args[0].LineNumber);
+    
+    // Evaluar y convertir directamente a string
+    string colorName = Evaluate(args[0]).ToString()!;
+    currentColor = ParseColor(colorName);
+    
+    // Depuración
+    GD.Print($"Color cambiado a: {colorName} ({currentColor})");
+}
     private void HandleSize(List<ExpressionNode> args)
     {
         if (args.Count != 1)
@@ -457,7 +476,7 @@ private bool IsValidFunction(string name)
     // Llamar al método del canvas
     return Canvas.GetColorCount(color, x1, y1, x2, y2);
 }
-  private int HandleIsBrushColor(List<object> args)
+ private int HandleIsBrushColor(List<object> args)
 {
     if (args.Count != 1)
         throw new WallEException("IsBrushColor requiere 1 argumento",
@@ -480,8 +499,8 @@ private bool IsValidFunction(string name)
             WallEException.ErrorType.Semantico);
     }
 
-    // Comparar con el color actual del pincel
-    return currentColor == color ? 1 : 0;
+    // Comparar con el color actual del pincel con tolerancia
+    return currentColor.IsEqualApprox(color) ? 1 : 0;
 }
 
 private int HandleIsBrushSize(List<object> args)
@@ -569,14 +588,23 @@ private int HandleIsCanvasColor(List<object> args)
                 WallEException.ErrorType.Ejecucion);
     }
 
-    private Color ParseColor(string color)
+   private Color ParseColor(string colorName)
+{
+    if (!colorMap.TryGetValue(colorName, out Color color))
     {
-        if (!colorMap.TryGetValue(color, out Color value))
-            throw new WallEException($"Color inválido: {color}",
+        // Intentar convertir a color por código hexadecimal
+        try
+        {
+            return Color.FromString(colorName, Colors.Transparent);
+        }
+        catch
+        {
+            throw new WallEException($"Color inválido: '{colorName}'",
                 WallEException.ErrorType.Semantico);
-        return value;
+        }
     }
-
+    return color;
+}
     private int AdjustBrushSize(int size)
     {
         if (size <= 0)

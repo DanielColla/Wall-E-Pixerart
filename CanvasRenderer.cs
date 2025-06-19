@@ -27,11 +27,12 @@ public partial class CanvasRenderer : TextureRect
         UpdateTexture();
     }
 
-    public void DrawLine(Vector2I start, Vector2I end, int width, Color color)
-    {
-        BresenhamLine(start, end, width, color);
-        UpdateTexture();
-    }
+   public Vector2I DrawLine(Vector2I start, Vector2I end, int width, Color color)
+{
+    BresenhamLine(start, end, width, color);
+    UpdateTexture();
+    return end; // Devuelve el punto final
+}
 
     public void DrawCircle(Vector2I center, int radius, int width, Color color)
     {

@@ -341,15 +341,23 @@ public class Parser
             Consume(TokenType.RParen, "Se esperaba ')' después de la expresión");
             return expr;
         }
+          if (Match(TokenType.Identifier) || 
+        Match(TokenType.GetActualX) || 
+        Match(TokenType.GetActualY) || 
+        Match(TokenType.GetCanvasSize) || 
+        Match(TokenType.GetColorCount) || 
+        Match(TokenType.IsBrushColor) || 
+        Match(TokenType.IsBrushSize) || 
+        Match(TokenType.IsCanvasColor))
+    {
+        string identifier = Previous().Lexeme;
+        if (Check(TokenType.LParen))
+            return ParseFunctionCall(identifier);
+        else
+            return new VariableNode(identifier) { LineNumber = Previous().Line };
+    }
 
-        if (Match(TokenType.Identifier))
-        {
-            string identifier = Previous().Lexeme;
-            if (Check(TokenType.LParen))
-                return ParseFunctionCall(identifier);
-            else
-                return new VariableNode(identifier) { LineNumber = Previous().Line };
-        }
+       
 
         throw ParseError("Expresión primaria inválida", $"Token: {Peek().Lexeme}");
     }

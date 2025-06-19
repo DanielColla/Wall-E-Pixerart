@@ -107,30 +107,31 @@ DrawLine(1, 0, n)
     }
 
     private void ExecuteProgram()
+{
+    try
     {
-        try
-        {
-            SaveState();
-            interpreter = new Interpreter { Canvas = Canvas };
-            
-            var tokens = new Lexer(CodeEditor.Text).Tokenize();
-            var program = new Parser(tokens).ParseProgram();
-            
-            ValidateProgramStructure(program);
-            interpreter.Execute(program);
-            
-            UpdateStatus("Ejecución exitosa!", false);
-        }
-        catch (WallEException e)
-        {
-            HandleWallEError(e);
-        }
-        catch (Exception e)
-        {
-            throw new WallEException("Error ejecución", 
-                WallEException.ErrorType.Ejecucion, inner: e);
-        }
+        SaveState();
+        // Crea una NUEVA instancia del intérprete para cada ejecución
+        interpreter = new Interpreter { Canvas = Canvas };
+        
+        var tokens = new Lexer(CodeEditor.Text).Tokenize();
+        var program = new Parser(tokens).ParseProgram();
+        
+        ValidateProgramStructure(program);
+        interpreter.Execute(program);
+        
+        UpdateStatus("Ejecución exitosa!", false);
     }
+    catch (WallEException e)
+    {
+        HandleWallEError(e);
+    }
+    catch (Exception e)
+    {
+        throw new WallEException("Error ejecución", 
+            WallEException.ErrorType.Ejecucion, inner: e);
+    }
+}
 
     private void ValidateProgramStructure(ProgramNode program)
     {
